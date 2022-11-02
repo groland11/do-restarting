@@ -38,6 +38,7 @@ MAP = { "/usr/bin/python3 -s /usr/sbin/firewalld": "firewalld",
         "/usr/libexec/platform-python -Es /usr/sbin/tuned": "tuned",
         "/opt/puppetlabs/puppet/bin/ruby /opt/puppetlabs/puppet/bin/puppet": "puppet",
         "/usr/sbin/sshd": "sshd",
+        "sshd": "",
         "/usr/sbin/NetworkManager": "NetworkManager",
         "/usr/sbin/sssd": " sssd",
         "/usr/libexec/sssd/sssd_ssh": "sssd",
@@ -49,6 +50,7 @@ MAP = { "/usr/bin/python3 -s /usr/sbin/firewalld": "firewalld",
         "/opt/bacula/bin/bacula-fd": "bacula-fd",
         "/usr/sbin/chronyd": "chronyd",
         "/sbin/auditd": "auditd",
+        "/usr/lib/systemd/systemd ": "systemd", # Mind the space at the end
         "/usr/lib/systemd/systemd-udevd": "systemd-udevd",
         "/usr/lib/systemd/systemd-journald": "systemd-journald",
         "/usr/lib/systemd/systemd-logind":  "systemd-logind",
@@ -58,7 +60,12 @@ MAP = { "/usr/bin/python3 -s /usr/sbin/firewalld": "firewalld",
         "/usr/bin/rhsmcertd": "rhsmcertd",
         "/usr/bin/freshclam": "clamav-freshclam",
         "/usr/sbin/xinetd": "xinetd",
-        "/usr/sbin/radiusd": "radiusd"
+        "/usr/sbin/radiusd": "radiusd",
+        "(sd-pam)": "", # https://bugzilla.redhat.com/show_bug.cgi?id=1070403
+        "/usr/libexec/pcp/bin/pmcd": "pmcd",
+        "/usr/libexec/pcp/bin/pmlogger": "pmlogger",
+        "/usr/libexec/pcp/bin/pmpause": "pmlogger",
+        "/var/lib/pcp/": "pmcd"
 }
 
 
