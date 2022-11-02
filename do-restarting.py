@@ -141,8 +141,8 @@ def read_config(file: Union[str, None]=""):
 
     try:
         config_object.read(config_file)
-        logger.debug(f"Config file: {config_file}")
         userinfo = config_object["MAIN"]
+        logger.debug(f"Using config file: {config_file}")
         blacklist = [ s.strip() for s in userinfo["blacklist"].split(",")]
         whitelist = [ s.strip() for s in userinfo["whitelist"].split(",")]
     except KeyError as e:
@@ -205,11 +205,11 @@ def get_daemons() -> set:
             for process in MAP:
                 if cmd[1].strip().startswith(process):
                     daemon = MAP[process]
-                    daemons.add(daemon) if daemon not in BLACKLIST and daemon != "" else logger.warning(f"Skipping {daemon}")
+                    daemons.add(daemon) if daemon not in BLACKLIST and daemon != "" else logger.debug(f"Skipping {cmd[1].strip()} ({daemon if daemon != '' else '<no daemon process>'})")
                     found = True
                     break
             if not found:
-                logger.debug(f"Unknown process {process}")
+                logger.debug(f"Unknown process {cmd[1].strip()}")
 
     return daemons
 
