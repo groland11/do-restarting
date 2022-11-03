@@ -127,11 +127,11 @@ def get_logger(debug: bool = False) -> logging.Logger:
 
     h1 = logging.StreamHandler(sys.stdout)
     h1.setLevel(logging.DEBUG)
-    h1.setFormatter(logging.Formatter(fmt="%(levelname)s: %(message)s"))
+    h1.setFormatter(logging.Formatter(fmt="%(asctime)s %(levelname)-8s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S"))
     h1.addFilter(LogFilter())
 
     h2 = logging.StreamHandler(sys.stdout)
-    h2.setFormatter(logging.Formatter(fmt="%(levelname)s: %(message)s"))
+    h2.setFormatter(logging.Formatter(fmt="%(asctime)s %(levelname)-8s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S"))
     h2.setLevel(logging.ERROR)
 
     logger.addHandler(h1)
