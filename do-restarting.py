@@ -30,6 +30,8 @@ MAP = { "/usr/bin/python3 -s /usr/sbin/firewalld": "firewalld",
         "/sbin/rpcbind": "rpcbind",
         "/usr/bin/rpcbind": "rpcbind",
         "/usr/sbin/rpc.statd": "rpc-statd",
+	"/usr/sbin/rpc.mountd": "nfs-mountd",
+	"/usr/sbin/nfsdcld": "nfsdcld",
         "/usr/sbin/sedispatch": "",
         "/sbin/auditd": "auditd",
         "/usr/libexec/postfix/master": "postfix",
@@ -70,7 +72,10 @@ MAP = { "/usr/bin/python3 -s /usr/sbin/firewalld": "firewalld",
         "/usr/libexec/pcp/bin/pmcd": "pmcd",
         "/usr/libexec/pcp/bin/pmlogger": "pmlogger",
         "/usr/libexec/pcp/bin/pmpause": "pmlogger",
-        "/var/lib/pcp/": "pmcd"
+        "/var/lib/pcp/": "pmcd",
+	"/usr/sbin/nfsdcld": "nfsdcld",
+	"/usr/local/qualys/cloud-agent/": "qualys-cloud-agent",
+	"/usr/sbin/dhcpd": "dhcpd"
 }
 
 
@@ -83,7 +88,11 @@ BLACKLIST = {
         "httpd",
         "bacula-sd",
         "bacula-dir",
-        "keepalived"
+        "keepalived",
+	"nfs-server",
+	"nfsdcld",
+	"rpc-statd",
+	"nfs-mountd"
 }
 
 
