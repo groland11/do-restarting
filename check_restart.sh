@@ -25,7 +25,7 @@ if (( $# != 0 )) ; then
     exit 3
 fi
 
-SERVICES=$($CHECKRESTART -s 2>/dev/null | grep -v Updating | tr "\n" ";")
+SERVICES=$($CHECKRESTART -s 2>/dev/null | grep "\.service" | tr "\n" ";")
 for s in ${BLACKLIST[@]}; do
 	SERVICES=$(/bin/echo "${SERVICES}" | /bin/sed "s/${s};//g")
 done
