@@ -104,14 +104,10 @@ class LogFilter(logging.Filter):
 def parseargs():
     """Process command line arguments"""
     parser = argparse.ArgumentParser(description="Restart all services that need to be restarted")
-    parser.add_argument("-q", "--quiet", action="store_true",
-        help="only display error messages and certificate file names")
     parser.add_argument("-d", "--debug", action="store_true",
         help="generate additional debug information")
     parser.add_argument("-c", "--configfile", action="store",
         help="configuration file (default: /usr/local/etc/do-restarting.conf)")
-    parser.add_argument("-v", "--verbose", action="store_true",
-        help="increase output verbosity")
     parser.add_argument("-V", "--version", action="version", version="1.0.0")
     return parser.parse_args()
 
