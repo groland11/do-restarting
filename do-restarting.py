@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Requires Python >= 3.6
 import argparse
 from configparser import ConfigParser,MissingSectionHeaderError
 import logging
@@ -11,8 +12,14 @@ from typing import Union
 
 DEBUG = False
 
+# Check for minimum Python version
+if not sys.version_info > (3, 6):
+    print("ERROR: Requires Python 3.6 or higher")
+    exit(1)
+
 # Mapping between process and daemon
 MAP = { "/usr/bin/python3 -s /usr/sbin/firewalld": "firewalld",
+        "/usr/bin/dbus-daemon": "dbus",
         "/usr/bin/dbus-broker": "dbus",
         "dbus-broker": "dbus",
         "/usr/lib/polkit-1/polkitd": "polkit",
@@ -64,6 +71,7 @@ MAP = { "/usr/bin/python3 -s /usr/sbin/firewalld": "firewalld",
         "/usr/lib/systemd/systemd  --switched-root": "systemd",
         "/usr/lib/systemd/systemd --system": "systemd",
         "/usr/bin/rhsmcertd": "rhsmcertd",
+	"/usr/sbin/clamd": "clamd@*",
         "/usr/bin/freshclam": "clamav-freshclam",
         "/usr/sbin/xinetd": "xinetd",
         "/usr/sbin/radiusd": "radiusd",
@@ -75,7 +83,8 @@ MAP = { "/usr/bin/python3 -s /usr/sbin/firewalld": "firewalld",
         "/var/lib/pcp/": "pmcd",
 	"/usr/sbin/nfsdcld": "nfsdcld",
 	"/usr/local/qualys/cloud-agent/": "qualys-cloud-agent",
-	"/usr/sbin/dhcpd": "dhcpd"
+	"/usr/sbin/dhcpd": "dhcpd",
+	"/usr/sbin/irqbalance": "irqbalance"
 }
 
 
@@ -185,7 +194,7 @@ def restart(daemon: str) -> bool:
     try:
         logger.debug(f"Restarting {daemon} ...")
         if not DEBUG:
-            output = subprocess.run(["systemctl", "restart", daemon], timeout=10, check=True)
+            output = subprocess.run(["systemctl", "restart", daemon], timeout=60, check=True)
     except FileNotFoundError as e:
         logger.error("systemctl not found")
         ret = False
@@ -206,9 +215,11 @@ def get_daemons() -> set:
     daemons = set()
 
     try:
-        output = subprocess.run(["needs-restarting"], timeout=10, encoding="utf-8", check=True, capture_output=True)
+        output = subprocess.run(["needs-restarting"], timeout=10, encoding="utf-8", check=True, stdout=subprocess.PIPE)
     except FileNotFoundError as e:
         logger.error("needs-restarting not found")
+    except TimeoutExpired as e:
+        logger.error("needs-restarting timeout expired ({e})")
     except subprocess.CalledProcessError as e:
         logger.error(f"needs-restarting returned {e.returncode}")
     else:
@@ -229,14 +240,22 @@ def get_daemons() -> set:
 
 
 def main():
+    ''' Main function'''
     global DEBUG
 
+    # Read commandline arguments
     args = parseargs()
     if args.debug:
         DEBUG = True
+
+    # Start logging
     logger = get_logger(args.debug)
+    logger.debug("Running in debug mode. Processes will not be restarted!")
+
+    # Check for configuration file
     read_config(args.configfile)
 
+    # Restart daemons
     daemons = get_daemons()
     for daemon in daemons:
         if restart(daemon):
