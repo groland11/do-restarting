@@ -2,6 +2,7 @@
 # Requires Python >= 3.6
 import argparse
 from configparser import ConfigParser,MissingSectionHeaderError
+from datetime import datetime
 import logging
 import os
 import re
@@ -190,17 +191,100 @@ def read_config(file: Union[str, None]="") -> dict:
         BLACKLIST.difference_update(whitelist)
         logger.debug(f"Blacklist is {BLACKLIST}")
 
+    # Read service sections
+    for section in config_object.keys():
+        if section in ["MAIN", "DEFAULT"]:
+            continue
+        logger.debug(f"Reading config section [{section}] ...")
+        userinfo = config_object[section]
+ 
+        # Searching vor config parameters: "dow", "hours", "pre", "post"
+        params = {"dow": "", "hours": "", "pre": "", "post": ""}
+        for param in params:
+            try:
+                params[param] = [s.strip() for s in userinfo[param].split(",")]
+            except:
+                pass
 
-def restart(daemon: str) -> bool:
+        logger.debug(f"{params}")
+        services_config[section] = params
+
+    return services_config
+
+
+def restart(daemon: str, config: dict) -> bool:
+    """Restart daemon / service
+
+    Service will not be restarted in debug mode.
+
+    Args:
+        daemon (str): Name of service to restart
+        config (dict): Configuration for service
+
+    Returns:
+        True: Service has been restarted successfully
+        False: Error occurred while restarting service.
+               This could be due to a failed precondition or an error
+               with systemctl. Details about the error will be logged.
     """
-    Restart daemon / service
-    :param daemon:
-    :return:
-    """
+
     global DEBUG
     logger = logging.getLogger(__name__)
+    conf_dow = []
+    conf_hours = []
     ret = True
 
+    # Check day of week
+    dow = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+    cur_dow = datetime.today().weekday()
+    for value in config["dow"]:
+        for i in dow:
+            value = value.replace(i, str(dow.index(i))) 
+
+        # Check if dow contains a range
+        pos = value.find("-")
+        if pos >= 0:
+            start = value[:pos]
+            end = value[pos + 1:]
+            conf_dow.extend(list(range(int(start), int(end) + 1)))
+        else:
+            conf_dow.append(int(value))
+
+    logger.debug(f"Date of week configured: {sorted(conf_dow)}")
+    if len(conf_dow) > 0 and cur_dow not in conf_dow:
+        logger.info(f"Skipping restart of {daemon} because current day of week {dow[cur_dow]} not configured in {config['dow']})")
+        return True
+
+    # Check hour
+    cur_hour= datetime.now().hour
+    for value in config["hours"]:
+        # Check if hours contains a range
+        pos = value.find("-")
+        if pos >= 0:
+            start = value[:pos]
+            end = value[pos + 1:]
+            conf_hours.extend(list(range(int(start), int(end) + 1)))
+        else:
+            conf_hours.append(int(value))
+
+    logger.debug(f"Hours configured: {sorted(conf_hours)}")
+    if len(conf_hours) > 0 and cur_hour not in conf_hours:
+        logger.info(f"Skipping restart of {daemon} because current hour {cur_hour} not configured in {config['hours']})")
+        return True
+
+    # Run pre command
+    if len(config["pre"]) > 0:
+        cmd = config["pre"][0].strip()
+        logger.debug(f"Running pre command {cmd} ...")
+        try:
+            output = subprocess.run(cmd, timeout=10, encoding="utf-8", check=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        except subprocess.TimeoutExpired as e:
+            logger.error("Failed to restart {daemon}: pre command timeout expired ({e})")
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to restart {daemon}: pre command returned: {e}")
+            return False
+
+    # Restart service
     try:
         logger.debug(f"Restarting {daemon} ...")
         if not DEBUG:
@@ -211,6 +295,17 @@ def restart(daemon: str) -> bool:
     except subprocess.CalledProcessError as e:
         logger.error(f"systemctl returned {e.returncode}")
         ret = False
+
+    # Run post command
+    if len(config["post"]) > 0:
+        cmd = config["post"][0].strip()
+        logger.debug(f"Running post command {cmd} ...")
+        try:
+            output = subprocess.run(cmd, timeout=10, encoding="utf-8", check=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        except subprocess.TimeoutExpired as e:
+            logger.error("post command timeout expired ({e})")
+        except subprocess.CalledProcessError as e:
+            logger.error(f"post command returned: {e}")
 
     return ret
 
