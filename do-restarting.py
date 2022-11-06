@@ -37,8 +37,8 @@ MAP = { "/usr/bin/python3 -s /usr/sbin/firewalld": "firewalld",
         "/sbin/rpcbind": "rpcbind",
         "/usr/bin/rpcbind": "rpcbind",
         "/usr/sbin/rpc.statd": "rpc-statd",
-	"/usr/sbin/rpc.mountd": "nfs-mountd",
-	"/usr/sbin/nfsdcld": "nfsdcld",
+        "/usr/sbin/rpc.mountd": "nfs-mountd",
+        "/usr/sbin/nfsdcld": "nfsdcld",
         "/usr/sbin/sedispatch": "",
         "/sbin/auditd": "auditd",
         "/usr/libexec/postfix/master": "postfix",
@@ -71,7 +71,7 @@ MAP = { "/usr/bin/python3 -s /usr/sbin/firewalld": "firewalld",
         "/usr/lib/systemd/systemd  --switched-root": "systemd",
         "/usr/lib/systemd/systemd --system": "systemd",
         "/usr/bin/rhsmcertd": "rhsmcertd",
-	"/usr/sbin/clamd": "clamd@*",
+        "/usr/sbin/clamd": "clamd@*",
         "/usr/bin/freshclam": "clamav-freshclam",
         "/usr/sbin/xinetd": "xinetd",
         "/usr/sbin/radiusd": "radiusd",
@@ -81,10 +81,10 @@ MAP = { "/usr/bin/python3 -s /usr/sbin/firewalld": "firewalld",
         "/usr/libexec/pcp/bin/pmlogger": "pmlogger",
         "/usr/libexec/pcp/bin/pmpause": "pmlogger",
         "/var/lib/pcp/": "pmcd",
-	"/usr/sbin/nfsdcld": "nfsdcld",
-	"/usr/local/qualys/cloud-agent/": "qualys-cloud-agent",
-	"/usr/sbin/dhcpd": "dhcpd",
-	"/usr/sbin/irqbalance": "irqbalance"
+        "/usr/sbin/nfsdcld": "nfsdcld",
+        "/usr/local/qualys/cloud-agent/": "qualys-cloud-agent",
+        "/usr/sbin/dhcpd": "dhcpd",
+        "/usr/sbin/irqbalance": "irqbalance"
 }
 
 
@@ -98,10 +98,10 @@ BLACKLIST = {
         "bacula-sd",
         "bacula-dir",
         "keepalived",
-	"nfs-server",
-	"nfsdcld",
-	"rpc-statd",
-	"nfs-mountd"
+        "nfs-server",
+        "nfsdcld",
+        "rpc-statd",
+        "nfs-mountd"
 }
 
 
@@ -145,25 +145,39 @@ def get_logger(debug: bool = False) -> logging.Logger:
     return logger
 
 
-def read_config(file: Union[str, None]=""):
-    """Read configuration file"""
+def read_config(file: Union[str, None]="") -> dict:
+    """Read configuration file
+
+    Global blacklist variable is updated to reflect blacklist and whitelist
+    parameters in config file. Individual service configurations are
+    returned in a dictionary.
+
+    Args:
+        file (str, None): Path of configuration file 
+
+    Returns:
+        Dictionary of parameters for individual services
+    """
+
     global BLACKLIST
     logger = logging.getLogger(__name__)
     config_file = "/usr/local/etc/do-restarting.conf"
     blacklist = []
     whitelist = []
+    services_config = {}
 
     if file is not None and os.path.isfile(file):
         config_file = file
 
     config_object = ConfigParser()
 
+    # Read MAIN section
+    config_object.read(config_file)
     try:
-        config_object.read(config_file)
         userinfo = config_object["MAIN"]
         logger.debug(f"Using config file: {config_file}")
-        blacklist = [ s.strip() for s in userinfo["blacklist"].split(",")]
-        whitelist = [ s.strip() for s in userinfo["whitelist"].split(",")]
+        blacklist = [s.strip() for s in userinfo["blacklist"].split(",")]
+        whitelist = [s.strip() for s in userinfo["whitelist"].split(",")]
     except KeyError as e:
         pass
     except MissingSectionHeaderError as e:
@@ -202,10 +216,13 @@ def restart(daemon: str) -> bool:
 
 
 def get_daemons() -> set:
+    """Retrieve list of daemons / services that need to be restarted
+
+    Rreturns:
+        Set of services that need to be restarted. Service names do not
+        contain the trailing ".service".
     """
-    Retrieve list of daemons / services that need to be restarted
-    :return:
-    """
+
     global BLACKLIST
     logger = logging.getLogger(__name__)
     daemons = set()
@@ -214,23 +231,24 @@ def get_daemons() -> set:
         output = subprocess.run(["needs-restarting"], timeout=10, encoding="utf-8", check=True, stdout=subprocess.PIPE)
     except FileNotFoundError as e:
         logger.error("needs-restarting not found")
-    except TimeoutExpired as e:
+    except subprocess.TimeoutExpired as e:
         logger.error("needs-restarting timeout expired ({e})")
     except subprocess.CalledProcessError as e:
         logger.error(f"needs-restarting returned {e.returncode}")
     else:
     	for line in output.stdout.splitlines():
-            found = False
-            cmd = line.split(":")
-            if len(cmd) > 1:
+            try:
+                cmd = line.split(":")[1].strip()
+            except IndexError as e:
+                logger.debug(f"Skipping output line '{line}'")
+            else:
                 for process in MAP:
-                    if cmd[1].strip().startswith(process):
+                    if cmd.startswith(process):
                         daemon = MAP[process]
-                        daemons.add(daemon) if daemon not in BLACKLIST and daemon != "" else logger.debug(f"Skipping {cmd[1].strip()} ({daemon if daemon != '' else '<no daemon process>'})")
-                        found = True
+                        daemons.add(daemon) if daemon not in BLACKLIST and daemon != "" else logger.debug(f"Skipping {cmd} ({daemon if daemon != '' else '<no daemon process>'})")
                         break
-                if not found:
-                    logger.debug(f"Unknown process {cmd[1].strip()}")
+                else:
+                    logger.debug(f"Unknown process {cmd}")
 
     return daemons
 
@@ -249,12 +267,12 @@ def main():
     logger.debug("Running in debug mode. Processes will not be restarted!")
 
     # Check for configuration file
-    read_config(args.configfile)
+    services_config = read_config(args.configfile)
 
     # Restart daemons
     daemons = get_daemons()
     for daemon in daemons:
-        if restart(daemon):
+        if restart(daemon, services_config[daemon]):
             logger.info(f"Successfully restarted {daemon}")
         else:
             logger.error(f"Failed to restart {daemon}")
