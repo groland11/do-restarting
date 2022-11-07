@@ -278,7 +278,7 @@ def restart(daemon: str, config: dict) -> bool:
         cmd = config["pre"][0].strip()
         logger.debug(f"Running pre command {cmd} ...")
         try:
-            output = subprocess.run(cmd, timeout=10, encoding="utf-8", check=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            output = subprocess.run(cmd, timeout=60, encoding="utf-8", check=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         except subprocess.TimeoutExpired as e:
             logger.error("Failed to restart {daemon}: pre command timeout expired ({e})")
         except subprocess.CalledProcessError as e:
@@ -302,7 +302,7 @@ def restart(daemon: str, config: dict) -> bool:
         cmd = config["post"][0].strip()
         logger.debug(f"Running post command {cmd} ...")
         try:
-            output = subprocess.run(cmd, timeout=10, encoding="utf-8", check=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            output = subprocess.run(cmd, timeout=60, encoding="utf-8", check=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         except subprocess.TimeoutExpired as e:
             logger.error("post command timeout expired ({e})")
         except subprocess.CalledProcessError as e:
@@ -314,7 +314,7 @@ def restart(daemon: str, config: dict) -> bool:
 def get_daemons() -> set:
     """Retrieve list of daemons / services that need to be restarted
 
-    Rreturns:
+    Returns:
         Set of services that need to be restarted. Service names do not
         contain the trailing ".service".
     """
@@ -324,7 +324,7 @@ def get_daemons() -> set:
     daemons = set()
 
     try:
-        output = subprocess.run(["needs-restarting"], timeout=10, encoding="utf-8", check=True, stdout=subprocess.PIPE)
+        output = subprocess.run(["needs-restarting"], timeout=30, encoding="utf-8", check=True, stdout=subprocess.PIPE)
     except FileNotFoundError as e:
         logger.error("needs-restarting not found")
     except subprocess.TimeoutExpired as e:
