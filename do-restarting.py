@@ -77,6 +77,7 @@ MAP = { "/usr/bin/python3 -s /usr/sbin/firewalld": "firewalld",
         "/usr/bin/freshclam": "clamav-freshclam",
         "/usr/sbin/xinetd": "xinetd",
         "/usr/sbin/radiusd": "radiusd",
+        "/usr/sbin/named": "named",
         "(sd-pam)": "", # https://bugzilla.redhat.com/show_bug.cgi?id=1070403
         "login ": "", # Mind the space at the end
         "/usr/libexec/pcp/bin/pmcd": "pmcd",
