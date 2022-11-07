@@ -22,7 +22,6 @@ optional arguments:
   -d, --debug           generate additional debug information
   -c CONFIGFILE, --configfile CONFIGFILE
                         configuration file (default: /usr/local/etc/do-restarting.conf)
-  -v, --verbose         increase output verbosity
   -V, --version         show program's version number and exit
 ```
 
