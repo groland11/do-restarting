@@ -77,6 +77,7 @@ MAP = { "/usr/bin/python3 -s /usr/sbin/firewalld": "firewalld",
         "/usr/bin/freshclam": "clamav-freshclam",
         "/usr/sbin/xinetd": "xinetd",
         "/usr/sbin/radiusd": "radiusd",
+        "/usr/sbin/named": "named",
         "(sd-pam)": "", # https://bugzilla.redhat.com/show_bug.cgi?id=1070403
         "login ": "", # Mind the space at the end
         "/usr/libexec/pcp/bin/pmcd": "pmcd",
@@ -164,8 +165,7 @@ def read_config(file: Union[str, None]="") -> dict:
     global BLACKLIST
     logger = logging.getLogger(__name__)
     config_file = "/usr/local/etc/do-restarting.conf"
-    blacklist = []
-    whitelist = []
+    config_lists = {"blacklist": [], "whitelist": []}
     services_config = {}
 
     if file is not None and os.path.isfile(file):
@@ -175,21 +175,22 @@ def read_config(file: Union[str, None]="") -> dict:
 
     # Read MAIN section
     config_object.read(config_file)
-    try:
-        userinfo = config_object["MAIN"]
-        logger.debug(f"Using config file: {config_file}")
-        blacklist = [s.strip() for s in userinfo["blacklist"].split(",")]
-        whitelist = [s.strip() for s in userinfo["whitelist"].split(",")]
-    except KeyError as e:
-        pass
-    except MissingSectionHeaderError as e:
-        logger.error(f"Invalid configuration file format ({config_file})")
-    except:
-        logger.error(f"Unable to parse configuration file {config_file}")
+    for config_list in config_lists:
+        try:
+            userinfo = config_object["MAIN"]
+            logger.debug(f"Using config file: {config_file}")
+            config_lists[config_list] = [s.strip() for s in userinfo[config_list].split(",")]
+        except KeyError as e:
+            pass
+        except MissingSectionHeaderError as e:
+            logger.error(f"Invalid configuration file format ({config_file})")
+        except:
+            logger.error(f"Unable to parse configuration file {config_file}")
 
-    if len(blacklist) > 0 or len(whitelist) > 0:
-        BLACKLIST.update(blacklist)
-        BLACKLIST.difference_update(whitelist)
+    # Merge config blacklist and whitelist into global BLACKLIST
+    if len(config_lists["blacklist"]) > 0 or len(config_lists["whitelist"]) > 0:
+        BLACKLIST.update(config_lists["blacklist"])
+        BLACKLIST.difference_update(config_lists["whitelist"])
         logger.debug(f"Blacklist is {BLACKLIST}")
 
     # Read service sections
@@ -213,7 +214,7 @@ def read_config(file: Union[str, None]="") -> dict:
     return services_config
 
 
-def restart(daemon: str, config: dict) -> bool:
+def restart(daemon: str, config: Union[dict, None]) -> bool:
     """Restart daemon / service
 
     Service will not be restarted in debug mode.
@@ -236,45 +237,47 @@ def restart(daemon: str, config: dict) -> bool:
     ret = True
 
     # Check day of week
-    dow = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
-    cur_dow = datetime.today().weekday()
-    for value in config["dow"]:
-        for i in dow:
-            value = value.replace(i, str(dow.index(i))) 
+    if config is not None and len(config.get("dow")) > 0:
+        dow = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+        cur_dow = datetime.today().weekday()
+        for value in config["dow"]:
+            for i in dow:
+                value = value.replace(i, str(dow.index(i))) 
 
-        # Check if dow contains a range
-        pos = value.find("-")
-        if pos >= 0:
-            start = value[:pos]
-            end = value[pos + 1:]
-            conf_dow.extend(list(range(int(start), int(end) + 1)))
-        else:
-            conf_dow.append(int(value))
+            # Check if dow contains a range
+            pos = value.find("-")
+            if pos >= 0:
+                start = value[:pos]
+                end = value[pos + 1:]
+                conf_dow.extend(list(range(int(start), int(end) + 1)))
+            else:
+                conf_dow.append(int(value))
 
-    logger.debug(f"Date of week configured: {sorted(conf_dow)}")
-    if len(conf_dow) > 0 and cur_dow not in conf_dow:
-        logger.info(f"Skipping restart of {daemon} because current day of week {dow[cur_dow]} not configured in {config['dow']})")
-        return True
+        logger.debug(f"Date of week configured: {sorted(conf_dow)}")
+        if len(conf_dow) > 0 and cur_dow not in conf_dow:
+            logger.info(f"Skipping restart of {daemon} because current day of week {dow[cur_dow]} not configured in {config['dow']})")
+            return True
 
     # Check hour
-    cur_hour= datetime.now().hour
-    for value in config["hours"]:
-        # Check if hours contains a range
-        pos = value.find("-")
-        if pos >= 0:
-            start = value[:pos]
-            end = value[pos + 1:]
-            conf_hours.extend(list(range(int(start), int(end) + 1)))
-        else:
-            conf_hours.append(int(value))
+    if config is not None and len(config.get("hours")) > 0:
+        cur_hour= datetime.now().hour
+        for value in config["hours"]:
+            # Check if hours contains a range
+            pos = value.find("-")
+            if pos >= 0:
+                start = value[:pos]
+                end = value[pos + 1:]
+                conf_hours.extend(list(range(int(start), int(end) + 1)))
+            else:
+                conf_hours.append(int(value))
 
-    logger.debug(f"Hours configured: {sorted(conf_hours)}")
-    if len(conf_hours) > 0 and cur_hour not in conf_hours:
-        logger.info(f"Skipping restart of {daemon} because current hour {cur_hour} not configured in {config['hours']})")
-        return True
+        logger.debug(f"Hours configured: {sorted(conf_hours)}")
+        if len(conf_hours) > 0 and cur_hour not in conf_hours:
+            logger.info(f"Skipping restart of {daemon} because current hour {cur_hour} not configured in {config['hours']})")
+            return True
 
     # Run pre command
-    if len(config["pre"]) > 0:
+    if config is not None and len(config.get("pre")) > 0:
         cmd = config["pre"][0].strip()
         logger.debug(f"Running pre command {cmd} ...")
         try:
@@ -298,7 +301,7 @@ def restart(daemon: str, config: dict) -> bool:
         ret = False
 
     # Run post command
-    if len(config["post"]) > 0:
+    if config is not None and len(config.get("post")) > 0:
         cmd = config["post"][0].strip()
         logger.debug(f"Running post command {cmd} ...")
         try:
@@ -368,7 +371,7 @@ def main():
     # Restart daemons
     daemons = get_daemons()
     for daemon in daemons:
-        if restart(daemon, services_config[daemon]):
+        if restart(daemon, services_config.get(daemon)):
             logger.info(f"Successfully restarted {daemon}")
         else:
             logger.error(f"Failed to restart {daemon}")
