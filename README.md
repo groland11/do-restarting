@@ -57,6 +57,7 @@ optional arguments:
 ```
 
 ## Sample configuration file
+```
 ### Main section applies to all services
 # Following configuration values are supported:
 # blacklist: List of services that will not be restarted.
@@ -99,4 +100,4 @@ post="systemctl status httpd"
 [firewalld]
 dow=mon-fri
 hours=0-6,12,19
-
+```
