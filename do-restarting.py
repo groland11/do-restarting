@@ -215,6 +215,83 @@ def read_config(file: Union[str, None]="") -> dict:
     return services_config
 
 
+def check_dow(dow: int, dow_range: list) -> bool:
+    """Check if weekday falls into a given range
+
+    Args:
+        dow (int): Date of week as number (0=mon, ..., 6=sun)
+        dow_range (list): Range of weekdays, days are specified in short notation:
+                      mon,tue,wed,thu,fri,sat,sun
+                      List entries may be single values or ranges.
+                      Example:
+                      ['mon', 'wed-fri', 'sun']
+
+    Returns:
+        True: Date of week is within range
+        False: Date of week is not within range
+
+    Throws:
+        ValueError: Invalid values given in parameter dow_range
+    """
+
+    dows = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+    conf_dow = []
+
+    for value in dow_range:
+        for i in dows:
+            value = value.replace(i, str(dows.index(i))) 
+
+        # Check if dow contains a range and expand it to single values
+        pos = value.find("-")
+        if pos >= 0:
+            start = value[:pos]
+            end = value[pos + 1:]
+            conf_dow.extend(list(range(int(start), int(end) + 1)))
+        else:
+            conf_dow.append(int(value))
+
+    if len(conf_dow) > 0 and dow in conf_dow:
+        return True
+
+    return False
+
+
+def check_hour(hour: int, hour_range: list) -> bool:
+    """Check if hour falls into a given range
+
+    Args:
+        hour (int): Hour to check (24h format)
+        hour_range (list): Range of hours as strings
+                      List entries may be single values or ranges.
+                      Example:
+                      ['6-8', '12', '20']
+
+    Returns:
+        True: Hour is within range
+        False: Hour is not within range
+
+    Throws:
+        ValueError: Invalid values given in parameter hour_range
+    """
+
+    conf_hours = []
+
+    for value in hour_range:
+        # Check if hours contains a range
+        pos = value.find("-")
+        if pos >= 0:
+            start = value[:pos]
+            end = value[pos + 1:]
+            conf_hours.extend(list(range(int(start), int(end) + 1)))
+        else:
+            conf_hours.append(int(value))
+
+    if len(conf_hours) > 0 and hour in conf_hours:
+        return True
+
+    return False
+
+
 def restart(daemon: str, config: Union[dict, None]) -> bool:
     """Restart daemon / service
 
@@ -233,61 +310,49 @@ def restart(daemon: str, config: Union[dict, None]) -> bool:
 
     global DEBUG
     logger = logging.getLogger(__name__)
-    conf_dow = []
-    conf_hours = []
     ret = True
 
-    # Check day of week
-    if config is not None and len(config.get("dow")) > 0:
-        dow = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
-        cur_dow = datetime.today().weekday()
-        for value in config["dow"]:
-            for i in dow:
-                value = value.replace(i, str(dow.index(i))) 
+    # Check if there is a configuration for this service
+    if config is not None:
+        # Check day of week
+        if len(config.get("dow")) > 0:
+            logger.debug(f"Date of week configured for service {daemon}: {sorted(config.get('dow'))}")
+            cur_dow = datetime.today().weekday()
+            try:
+                if not check_dow(cur_dow, config.get("dow")):
+                    logger.info(f"Skipping restart of {daemon} because current day of week {cur_dow} is not configured in {config['dow']})")
+                    return True
+                else:
+                    logger.info(f"{daemon} configured for restart in {config['dow']})")
+            except ValueError:
+                logger.warning(f"Invalid value in day of week parameter for service {daemon} ({config['dow']})")
 
-            # Check if dow contains a range
-            pos = value.find("-")
-            if pos >= 0:
-                start = value[:pos]
-                end = value[pos + 1:]
-                conf_dow.extend(list(range(int(start), int(end) + 1)))
+        # Check hour
+        if len(config.get("hours")) > 0:
+            logger.debug(f"Hours configured for service {daemon}: {sorted(config.get('hours'))}")
+            cur_hour = datetime.now().hour
+            try:
+                if not check_hour(cur_hour, config.get("hours")):
+                    logger.info(f"Skipping restart of {daemon} because current hour {cur_hour} is not configured in {config['hours']})")
+                    return True
+                else:
+                    logger.info(f"{daemon} configured for restart in {config['hours']})")
+            except ValueError:
+                logger.warning(f"Invalid value in hours parameter for service {daemon} ({config['hours']})")
+
+        # Run pre command
+        if len(config.get("pre")) > 0:
+            cmd = config["pre"][0].strip()
+            logger.debug(f"Running pre command {cmd} ...")
+            try:
+                output = subprocess.run(cmd, timeout=60, encoding="utf-8", check=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            except subprocess.TimeoutExpired as e:
+                logger.error("Failed to restart {daemon}: pre command timeout expired ({e})")
+            except subprocess.CalledProcessError as e:
+                logger.error(f"Failed to restart {daemon}: pre command returned: {e}")
+                return False
             else:
-                conf_dow.append(int(value))
-
-        logger.debug(f"Date of week configured: {sorted(conf_dow)}")
-        if len(conf_dow) > 0 and cur_dow not in conf_dow:
-            logger.info(f"Skipping restart of {daemon} because current day of week {dow[cur_dow]} not configured in {config['dow']})")
-            return True
-
-    # Check hour
-    if config is not None and len(config.get("hours")) > 0:
-        cur_hour= datetime.now().hour
-        for value in config["hours"]:
-            # Check if hours contains a range
-            pos = value.find("-")
-            if pos >= 0:
-                start = value[:pos]
-                end = value[pos + 1:]
-                conf_hours.extend(list(range(int(start), int(end) + 1)))
-            else:
-                conf_hours.append(int(value))
-
-        logger.debug(f"Hours configured: {sorted(conf_hours)}")
-        if len(conf_hours) > 0 and cur_hour not in conf_hours:
-            logger.info(f"Skipping restart of {daemon} because current hour {cur_hour} not configured in {config['hours']})")
-            return True
-
-    # Run pre command
-    if config is not None and len(config.get("pre")) > 0:
-        cmd = config["pre"][0].strip()
-        logger.debug(f"Running pre command {cmd} ...")
-        try:
-            output = subprocess.run(cmd, timeout=60, encoding="utf-8", check=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        except subprocess.TimeoutExpired as e:
-            logger.error("Failed to restart {daemon}: pre command timeout expired ({e})")
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Failed to restart {daemon}: pre command returned: {e}")
-            return False
+                logger.info(f"{daemon} pre command executed successfully ({cmd})")
 
     # Restart service
     try:
@@ -295,13 +360,15 @@ def restart(daemon: str, config: Union[dict, None]) -> bool:
         if not DEBUG:
             output = subprocess.run(["systemctl", "restart", daemon], timeout=60, check=True)
     except FileNotFoundError as e:
-        logger.error("systemctl not found")
+        logger.error("Failed to restart {daemon} (systemctl not found)")
         ret = False
     except subprocess.CalledProcessError as e:
-        logger.error(f"systemctl returned {e.returncode}")
+        logger.error(f"Failed to restart {daemon} (systemctl returned {e.returncode})")
         ret = False
+    else:
+        logger.info(f"Successfully restarted {daemon}")
 
-    # Run post command
+    # Run post command if configured
     if config is not None and len(config.get("post")) > 0:
         cmd = config["post"][0].strip()
         logger.debug(f"Running post command {cmd} ...")
@@ -311,6 +378,8 @@ def restart(daemon: str, config: Union[dict, None]) -> bool:
             logger.error("post command timeout expired ({e})")
         except subprocess.CalledProcessError as e:
             logger.error(f"post command returned: {e}")
+        else:
+            logger.info(f"{daemon} post command executed successfully ({cmd})")
 
     return ret
 
@@ -321,6 +390,9 @@ def get_daemons() -> set:
     Returns:
         Set of services that need to be restarted. Service names do not
         contain the trailing ".service".
+
+    Throws:
+        Exception: needs-restarting returned an error
     """
 
     global BLACKLIST
@@ -328,27 +400,31 @@ def get_daemons() -> set:
     daemons = set()
 
     try:
-        output = subprocess.run(["needs-restarting"], timeout=30, encoding="utf-8", check=True, stdout=subprocess.PIPE)
+        output = subprocess.run(["needs-restarting"], timeout=30, encoding="utf-8", stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     except FileNotFoundError as e:
         logger.error("needs-restarting not found")
+        raise Exception
     except subprocess.TimeoutExpired as e:
         logger.error("needs-restarting timeout expired ({e})")
-    except subprocess.CalledProcessError as e:
-        logger.error(f"needs-restarting returned {e.returncode}")
+        raise Exception
     else:
-    	for line in output.stdout.splitlines():
-            try:
-                cmd = line.split(":")[1].strip()
-            except IndexError as e:
-                logger.debug(f"Skipping output line '{line}'")
-            else:
-                for process in MAP:
-                    if cmd.startswith(process):
-                        daemon = MAP[process]
-                        daemons.add(daemon) if daemon not in BLACKLIST and daemon != "" else logger.debug(f"Skipping {cmd} ({daemon if daemon != '' else '<no daemon process>'})")
-                        break
+        if output.returncode != 0:
+            logger.error(f"needs-restarting returned {output.returncode}: {output.stderr.strip()}")
+            raise Exception
+        else:
+            for line in output.stdout.splitlines():
+                try:
+                    cmd = line.split(":")[1].strip()
+                except IndexError as e:
+                    logger.debug(f"Skipping output line '{line}'")
                 else:
-                    logger.debug(f"Unknown process {cmd}")
+                    for process in MAP:
+                        if cmd.startswith(process):
+                            daemon = MAP[process]
+                            daemons.add(daemon) if daemon not in BLACKLIST and daemon != "" else logger.debug(f"Skipping {cmd} ({daemon if daemon != '' else '<no daemon process>'})")
+                            break
+                    else:
+                        logger.debug(f"Unknown process {cmd}")
 
     return daemons
 
@@ -370,12 +446,13 @@ def main():
     services_config = read_config(args.configfile)
 
     # Restart daemons
-    daemons = get_daemons()
-    for daemon in daemons:
-        if restart(daemon, services_config.get(daemon)):
-            logger.info(f"Successfully restarted {daemon}")
-        else:
-            logger.error(f"Failed to restart {daemon}")
+    try:
+        daemons = get_daemons()
+    except:
+        exit(1)
+    else:
+        for daemon in daemons:
+            restart(daemon, services_config.get(daemon))
 
 
 if __name__ == "__main__":
