@@ -86,6 +86,7 @@ MAP = { "/usr/bin/python3 -s /usr/sbin/firewalld": "firewalld",
         "/var/lib/pcp/": "pmcd",
         "/usr/sbin/nfsdcld": "nfsdcld",
         "/usr/local/qualys/cloud-agent/": "qualys-cloud-agent",
+        "/opt/nessus_agent/sbin/": "nessusagent",
         "/usr/sbin/dhcpd": "dhcpd",
         "/usr/sbin/irqbalance": "irqbalance"
 }
