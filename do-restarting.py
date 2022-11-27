@@ -10,6 +10,8 @@ import subprocess
 import sys
 from typing import Union
 
+__license__ = "GPLv3"
+__version__ = "0.9.0"
 
 DEBUG = False
 
