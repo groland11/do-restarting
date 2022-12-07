@@ -88,7 +88,10 @@ MAP = { "/usr/bin/python3 -s /usr/sbin/firewalld": "firewalld",
         "/usr/local/qualys/cloud-agent/": "qualys-cloud-agent",
         "/opt/nessus_agent/sbin/": "nessusagent",
         "/usr/sbin/dhcpd": "dhcpd",
-        "/usr/sbin/irqbalance": "irqbalance"
+        "/usr/sbin/irqbalance": "irqbalance",
+        "/usr/libexec/platform-python /usr/bin/virt-who": "virt-who",
+        "/usr/bin/lsmd ": "libstoragemgmt",
+        "/sbin/agetty .* tty1 ": "getty\x40tty1"
 }
 
 
