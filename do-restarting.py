@@ -422,7 +422,9 @@ def get_daemons() -> set:
                     logger.debug(f"Skipping output line '{line}'")
                 else:
                     for process in MAP:
-                        if cmd.startswith(process):
+                        m = re.match(f"{process}", cmd)
+                        #if cmd.startswith(process):
+                        if m:
                             daemon = MAP[process]
                             daemons.add(daemon) if daemon not in BLACKLIST and daemon != "" else logger.debug(f"Skipping {cmd} ({daemon if daemon != '' else '<no daemon process>'})")
                             break
