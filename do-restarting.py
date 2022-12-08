@@ -11,7 +11,7 @@ import sys
 from typing import Union
 
 __license__ = "GPLv3"
-__version__ = "0.9.0"
+__version__ = "0.9.1"
 
 DEBUG = False
 
@@ -348,6 +348,8 @@ def restart(daemon: str, config: Union[dict, None]) -> bool:
             logger.debug(f"Running pre command {cmd} ...")
             try:
                 output = subprocess.run(cmd, timeout=60, encoding="utf-8", check=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            except FileNotFoundError as e:
+                logger.error("Failed to restart {daemon}: pre command not found ({e})")
             except subprocess.TimeoutExpired as e:
                 logger.error("Failed to restart {daemon}: pre command timeout expired ({e})")
             except subprocess.CalledProcessError as e:
@@ -364,6 +366,9 @@ def restart(daemon: str, config: Union[dict, None]) -> bool:
     except FileNotFoundError as e:
         logger.error("Failed to restart {daemon} (systemctl not found)")
         ret = False
+    except subprocess.TimeoutExpired as e:
+        logger.error("Failed to restart {daemon} (systemctl timed out: {e})")
+        ret = False
     except subprocess.CalledProcessError as e:
         logger.error(f"Failed to restart {daemon} (systemctl returned {e.returncode})")
         ret = False
@@ -376,6 +381,8 @@ def restart(daemon: str, config: Union[dict, None]) -> bool:
         logger.debug(f"Running post command {cmd} ...")
         try:
             output = subprocess.run(cmd, timeout=60, encoding="utf-8", check=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        except FileNotFoundError as e:
+            logger.error("post command not found ({e})")
         except subprocess.TimeoutExpired as e:
             logger.error("post command timeout expired ({e})")
         except subprocess.CalledProcessError as e:
