@@ -90,7 +90,10 @@ MAP = { "/usr/bin/python3 -s /usr/sbin/firewalld": "firewalld",
         "/usr/local/qualys/cloud-agent/": "qualys-cloud-agent",
         "/opt/nessus_agent/sbin/": "nessusagent",
         "/usr/sbin/dhcpd": "dhcpd",
-        "/usr/sbin/irqbalance": "irqbalance"
+        "/usr/sbin/irqbalance": "irqbalance",
+        "/usr/libexec/platform-python /usr/bin/virt-who": "virt-who",
+        "/usr/bin/lsmd ": "libstoragemgmt",
+        "/sbin/agetty .* tty1 ": "getty\x40tty1"
 }
 
 
@@ -428,7 +431,9 @@ def get_daemons() -> set:
                     logger.debug(f"Skipping output line '{line}'")
                 else:
                     for process in MAP:
-                        if cmd.startswith(process):
+                        m = re.match(f"{process}", cmd)
+                        #if cmd.startswith(process):
+                        if m:
                             daemon = MAP[process]
                             daemons.add(daemon) if daemon not in BLACKLIST and daemon != "" else logger.debug(f"Skipping {cmd} ({daemon if daemon != '' else '<no daemon process>'})")
                             break
