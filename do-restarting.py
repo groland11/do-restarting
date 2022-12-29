@@ -352,9 +352,9 @@ def restart(daemon: str, config: Union[dict, None]) -> bool:
             try:
                 output = subprocess.run(cmd, timeout=60, encoding="utf-8", check=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             except FileNotFoundError as e:
-                logger.error("Failed to restart {daemon}: pre command not found ({e})")
+                logger.error(f"Failed to restart {daemon}: pre command not found ({e})")
             except subprocess.TimeoutExpired as e:
-                logger.error("Failed to restart {daemon}: pre command timeout expired ({e})")
+                logger.error(f"Failed to restart {daemon}: pre command timeout expired ({e})")
             except subprocess.CalledProcessError as e:
                 logger.error(f"Failed to restart {daemon}: pre command returned: {e}")
                 return False
@@ -367,10 +367,10 @@ def restart(daemon: str, config: Union[dict, None]) -> bool:
         if not DEBUG:
             output = subprocess.run(["systemctl", "restart", daemon], timeout=60, check=True)
     except FileNotFoundError as e:
-        logger.error("Failed to restart {daemon} (systemctl not found)")
+        logger.error(f"Failed to restart {daemon} (systemctl not found)")
         ret = False
     except subprocess.TimeoutExpired as e:
-        logger.error("Failed to restart {daemon} (systemctl timed out: {e})")
+        logger.error(f"Failed to restart {daemon} (systemctl timed out: {e})")
         ret = False
     except subprocess.CalledProcessError as e:
         logger.error(f"Failed to restart {daemon} (systemctl returned {e.returncode})")
@@ -385,9 +385,9 @@ def restart(daemon: str, config: Union[dict, None]) -> bool:
         try:
             output = subprocess.run(cmd, timeout=60, encoding="utf-8", check=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         except FileNotFoundError as e:
-            logger.error("post command not found ({e})")
+            logger.error(f"post command not found ({e})")
         except subprocess.TimeoutExpired as e:
-            logger.error("post command timeout expired ({e})")
+            logger.error(f"post command timeout expired ({e})")
         except subprocess.CalledProcessError as e:
             logger.error(f"post command returned: {e}")
         else:
@@ -417,7 +417,7 @@ def get_daemons() -> set:
         logger.error("needs-restarting not found")
         raise Exception
     except subprocess.TimeoutExpired as e:
-        logger.error("needs-restarting timeout expired ({e})")
+        logger.error(f"needs-restarting timeout expired ({e})")
         raise Exception
     else:
         if output.returncode != 0:
