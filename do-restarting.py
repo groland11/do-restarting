@@ -65,6 +65,7 @@ MAP = { "/usr/bin/python3 -s /usr/sbin/firewalld": "firewalld",
         "/usr/libexec/platform-python -s /usr/sbin/firewalld": "firewalld",
         "/usr/bin/python2 -Es /usr/sbin/firewalld": "firewalld",
         "/opt/bacula/bin/bacula-fd": "bacula-fd",
+	"/usr/sbin/bacula-fd": "bacula-fd",
         "/usr/sbin/chronyd": "chronyd",
         "/sbin/auditd": "auditd",
         "/usr/lib/systemd/systemd ": "systemd", # Mind the space at the end
