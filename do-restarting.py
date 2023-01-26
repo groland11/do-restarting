@@ -423,24 +423,26 @@ def get_daemons() -> set:
         raise Exception
     else:
         if output.returncode != 0:
-            logger.error(f"needs-restarting returned {output.returncode}: {output.stderr.strip()}")
-            raise Exception
-        else:
-            for line in output.stdout.splitlines():
-                try:
-                    cmd = line.split(":")[1].strip()
-                except IndexError as e:
-                    logger.debug(f"Skipping output line '{line}'")
+            # False positive: "Failed to read PID ..."
+            if not re.match(r'Failed to read PID', output.stderr.strip()):
+                logger.error(f"needs-restarting returned {output.returncode}: {output.stderr.strip()}")
+                raise Exception
+
+        for line in output.stdout.splitlines():
+            try:
+                cmd = line.split(":")[1].strip()
+            except IndexError as e:
+                logger.debug(f"Skipping output line '{line}'")
+            else:
+                for process in MAP:
+                    m = re.match(f"{process}", cmd)
+                    #if cmd.startswith(process):
+                    if m:
+                        daemon = MAP[process]
+                        daemons.add(daemon) if daemon not in BLACKLIST and daemon != "" else logger.debug(f"Skipping {cmd} ({daemon if daemon != '' else '<no daemon process>'})")
+                        break
                 else:
-                    for process in MAP:
-                        m = re.match(f"{process}", cmd)
-                        #if cmd.startswith(process):
-                        if m:
-                            daemon = MAP[process]
-                            daemons.add(daemon) if daemon not in BLACKLIST and daemon != "" else logger.debug(f"Skipping {cmd} ({daemon if daemon != '' else '<no daemon process>'})")
-                            break
-                    else:
-                        logger.debug(f"Unknown process {cmd}")
+                    logger.debug(f"Unknown process {cmd}")
 
     return daemons
 
