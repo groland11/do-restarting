@@ -429,7 +429,8 @@ def get_daemons() -> set:
             # Ignore error output: "Failed to read PID ...", "[Errno 2] No such file or directory ..."
             m1 = re.match(r'Failed to read PID', output.stderr.strip())
             m2 = re.match(r'\[Errno 2\] No such file or directory', output.stderr.strip())
-            if not m1 and not m2:
+            m3 = re.match(r'\[Errno 3\] No such process', output.stderr.strip())
+            if not m1 and not m2 and not m3:
                 logger.error(f"needs-restarting returned {output.returncode}: {output.stderr.strip()}")
                 raise Exception
 
