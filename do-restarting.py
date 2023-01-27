@@ -93,6 +93,7 @@ MAP = { "/usr/bin/python3 -s /usr/sbin/firewalld": "firewalld",
         "/bin/bash /usr/bin/check_mk_agent": "check_mk-async",
         "/usr/sbin/dhcpd": "dhcpd",
         "/usr/sbin/irqbalance": "irqbalance",
+        "/usr/libexec/udisks2/udisksd": "udisks2",
         "/usr/libexec/platform-python /usr/bin/virt-who": "virt-who",
         "/usr/bin/lsmd ": "libstoragemgmt",
         "/sbin/agetty .* tty1 ": "getty\x40tty1"
