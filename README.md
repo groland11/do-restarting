@@ -10,6 +10,11 @@ Similar to "needs-restarting" in Red Hat Enterprise Linux, do-restarting actuall
 - Supports blacklisting and whitelisting of services in configuration file
 - Individual configuration for each service: Day of week and hours allowed for restart, pre- and post-command
 
+## Requirements
+- Red Hat Enterprise Linux 7/8/9
+- Python >= 3.6
+- Package "yum-utils" (needs-restarting)
+
 ## Usage
 ```
 ./do-restarting.py -h
@@ -68,8 +73,8 @@ optional arguments:
 #     Service names must not include the trailing ".service".
 #     Example: whitelist=dbus
 [MAIN]
-blacklist=httpd,mysqld
-whitelist=dbus
+blacklist=mysqld
+whitelist=dbus,httpd,firewalld
 
 ### Sections for individual services
 # Following configuration values are supported:
