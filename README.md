@@ -73,8 +73,8 @@ optional arguments:
 #     Service names must not include the trailing ".service".
 #     Example: whitelist=dbus
 [MAIN]
-blacklist=httpd,mysqld
-whitelist=dbus
+blacklist=mysqld
+whitelist=dbus,httpd,firewalld
 
 ### Sections for individual services
 # Following configuration values are supported:
