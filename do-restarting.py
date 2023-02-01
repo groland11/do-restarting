@@ -92,7 +92,10 @@ MAP = { "/usr/bin/python3 -s /usr/sbin/firewalld": "firewalld",
         "/opt/nessus_agent/sbin/": "nessusagent",
         "/bin/bash /usr/bin/check_mk_agent": "check_mk-async",
         "/usr/sbin/dhcpd": "dhcpd",
+        "/usr/local/bin/c-icap": "c-icap",
+        "/usr/sbin/squid": "squid",
         "/usr/sbin/irqbalance": "irqbalance",
+        "/usr/libexec/udisks2/udisksd": "udisks2",
         "/usr/libexec/platform-python /usr/bin/virt-who": "virt-who",
         "/usr/bin/lsmd ": "libstoragemgmt",
         "/sbin/agetty .* tty1 ": "getty\x40tty1"
@@ -423,24 +426,29 @@ def get_daemons() -> set:
         raise Exception
     else:
         if output.returncode != 0:
-            logger.error(f"needs-restarting returned {output.returncode}: {output.stderr.strip()}")
-            raise Exception
-        else:
-            for line in output.stdout.splitlines():
-                try:
-                    cmd = line.split(":")[1].strip()
-                except IndexError as e:
-                    logger.debug(f"Skipping output line '{line}'")
+            # Ignore error output: "Failed to read PID ...", "[Errno 2] No such file or directory ..."
+            m1 = re.match(r'Failed to read PID', output.stderr.strip())
+            m2 = re.match(r'\[Errno 2\] No such file or directory', output.stderr.strip())
+            m3 = re.match(r'\[Errno 3\] No such process', output.stderr.strip())
+            if not m1 and not m2 and not m3:
+                logger.error(f"needs-restarting returned {output.returncode}: {output.stderr.strip()}")
+                raise Exception
+
+        for line in output.stdout.splitlines():
+            try:
+                cmd = line.split(":")[1].strip()
+            except IndexError as e:
+                logger.debug(f"Skipping output line '{line}'")
+            else:
+                for process in MAP:
+                    m = re.match(f"{process}", cmd)
+                    #if cmd.startswith(process):
+                    if m:
+                        daemon = MAP[process]
+                        daemons.add(daemon) if daemon not in BLACKLIST and daemon != "" else logger.debug(f"Skipping {cmd} ({daemon if daemon != '' else '<no daemon process>'})")
+                        break
                 else:
-                    for process in MAP:
-                        m = re.match(f"{process}", cmd)
-                        #if cmd.startswith(process):
-                        if m:
-                            daemon = MAP[process]
-                            daemons.add(daemon) if daemon not in BLACKLIST and daemon != "" else logger.debug(f"Skipping {cmd} ({daemon if daemon != '' else '<no daemon process>'})")
-                            break
-                    else:
-                        logger.debug(f"Unknown process {cmd}")
+                    logger.debug(f"Unknown process {cmd}")
 
     return daemons
 
