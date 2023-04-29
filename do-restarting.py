@@ -332,12 +332,12 @@ def restart(daemon: str, config: Union[dict, None]) -> bool:
             cur_dow = datetime.today().weekday()
             try:
                 if not check_dow(cur_dow, config.get("dow")):
-                    logger.info(f"Skipping restart of {daemon} because current day of week {cur_dow} is not configured in {config['dow']})")
+                    logger.info(f"Skipping restart of {daemon} because current day of week {cur_dow} is not configured in {config['dow']}")
                     return True
                 else:
-                    logger.info(f"{daemon} configured for restart in {config['dow']})")
+                    logger.info(f"{daemon} configured for restart in {config['dow']}")
             except ValueError:
-                logger.warning(f"Invalid value in day of week parameter for service {daemon} ({config['dow']})")
+                logger.warning(f"Invalid value in day of week parameter for service {daemon} ({config['dow']}")
 
         # Check hour
         if len(config.get("hours")) > 0:
@@ -345,10 +345,10 @@ def restart(daemon: str, config: Union[dict, None]) -> bool:
             cur_hour = datetime.now().hour
             try:
                 if not check_hour(cur_hour, config.get("hours")):
-                    logger.info(f"Skipping restart of {daemon} because current hour {cur_hour} is not configured in {config['hours']})")
+                    logger.info(f"Skipping restart of {daemon} because current hour {cur_hour} is not configured in {config['hours']}")
                     return True
                 else:
-                    logger.info(f"{daemon} configured for restart in {config['hours']})")
+                    logger.info(f"{daemon} configured for restart in {config['hours']}")
             except ValueError:
                 logger.warning(f"Invalid value in hours parameter for service {daemon} ({config['hours']})")
 
